@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Adds a new file to the list of encrypted files.
+# Usage: noirbox-register-new-file filename
+
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. "$script_dir/_noirbox-common"
+
+up_to_noirbox_root
+read_config
+
+local_key="$(gcloud kms decrypt \
+    --location="$location" \
+    --keyring="$keyring" \
+    --key="$key" \
+    --plaintext-file=- \
+    --ciphertext-file="$noirbox_dir/local-key.enc")"
+
+new_file="$1"
+
+while IFS="" read -r file
+do
+    if [[ "$file" = "$new_file" ]]; then
+        echo "$new_file is already registered"
+        exit 1
+    fi
+done < "$noirbox_dir/noirbox-files.txt"
+
+sorted_files="$( (cat "$noirbox_dir/noirbox-files.txt"; echo "$new_file") | sort)"
+echo "$sorted_files" > "$noirbox_dir/noirbox-files.txt"
+
+echo "$new_file" >> .gitignore
+
+encrypt_file "$new_file" "$local_key"
+git add "$new_file.gpg"
+git rm -f "$new_file" 2>/dev/null || true
+rm -f "$new_file"
+
+

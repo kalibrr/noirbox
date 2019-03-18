@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Initializes noirbox in your directory. Expects to be in a git repo.
+# Usage: noirbox-init --location=location --key=key --keyring=keyring
+
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. "$script_dir/_noirbox-common"
+
+mkdir -p .noirbox
+noirbox_dir="$(realpath .noirbox)"
+
+keyring=""
+location=""
+key=""
+create_key="yes"
+force=""
+
+for arg in "${@}"; do
+    opt="$(echo "$arg" | cut -d= -f1)"
+    val="$(echo "$arg" | cut -d= -f2)"
+    case "$opt" in
+    "--keyring")
+        keyring="$val"
+        ;;
+    "--location")
+        location="$val"
+        ;;
+    "--key")
+        key="$val"
+        ;;
+    "--create-key")
+        create_key="$val"
+        ;;
+    "--force")
+        force="yes"
+        ;;
+    esac
+done
+
+if [[ -d .noirbox ]] && [[ "$force" != "yes" ]]; then
+    echo "A .noirbox directory already exists; this noirbox seems already initialized."
+    exit 1
+fi
+
+
+if [[ -z "$keyring" ]] || [[ -z "$location" ]] || [[ -z "$key" ]]; then
+    echo "Please enter location (e.g. asia), a keyring name, and a key name."
+    exit 1
+fi
+
+cat >"$noirbox_dir/config.yaml" <<EOF
+location: "$location"
+keyring: "$keyring"
+key: "$key"
+EOF
+
+if [[ "$create_key" = "yes" ]]; then
+    gcloud kms keyrings create "$keyring" \
+        --location "$location"
+    gcloud kms keys create "$key" \
+        --location "$location" \
+        --keyring "$keyring" \
+        --purpose encryption \
+        --rotation-period "30d" \
+        --next-rotation-time "+30d"
+fi
+
+# Cloud KMS allows up to a 64KiB file
+set +o pipefail
+local_key="$(tr -dc A-Za-z0-9 < /dev/urandom | head -c $key_size)"
+echo "$local_key" | gcloud kms encrypt \
+    --location="$location" \
+    --keyring="$keyring" \
+    --key="$key" \
+    --plaintext-file=- \
+    --ciphertext-file="$noirbox_dir/local-key.enc"
+
+if [[ ! -f "$noirbox_dir/noirbox-files.txt" ]]; then
+    echo >"$noirbox_dir/noirbox-files.txt"
+fi

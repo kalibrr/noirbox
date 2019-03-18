@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -e -u -o pipefail
+
+key_size=256
+
+up_to_noirbox_root() {
+    until [[ -d .noirbox ]]; do
+        cd ..
+        if [[ "$(pwd)" = "/" ]]; then
+            echo "No .noirbox directory found. Maybe noirbox-init?"
+            exit 1
+        fi
+    done
+}
+
+read_config() {
+    noirbox_dir="$(realpath .noirbox)"
+    location="$(cat "$noirbox_dir/config.yaml" | yq -r .location)"
+    key="$(cat "$noirbox_dir/config.yaml" | yq -r .key)"
+    keyring="$(cat "$noirbox_dir/config.yaml" | yq -r .keyring)"
+}
+
+cat_file() {
+    file="$1"
+    local_key="$2"
+    # black magic to capture only stderr: https://unix.stackexchange.com/questions/474177/how-to-redirect-stderr-in-a-variable-but-keep-stdout-in-the-console
+    set +e
+    { err="$(echo "$local_key" | gpg --cipher-algo AES256 --batch -d --passphrase-fd 0 "$file.gpg" 2>&1 >&3 3>&-)"; } 3>&1
+    retval=$?
+    set -e
+    if [[ $retval -ne 0 ]]; then
+        echo "$err"
+        exit $retval
+    fi
+}
+
+decrypt_file() {
+    file="$1"
+    local_key="$2"
+    cat_file "$file" "$local_key" > "$file"
+}
+
+encrypt_file() {
+    file="$1"
+    local_key="$2"
+    rm -f "$file.gpg"
+    echo "$local_key" | gpg --cipher-algo AES256 --batch -c --passphrase-fd 0 "$file"
+}
+
+
+
+verbose="no"
+debug="no"
+
+for arg in "${@}"; do
+    opt="$(echo "$arg" | cut -d= -f1)"
+    val="$(echo "$arg" | cut -d= -f2)"
+    case "$opt" in
+    "--verbose")
+        verbose="yes"
+        ;;
+    "--debug")
+        debug="yes"
+        ;;
+    esac
+done
+
+if [[ "$verbose" = "yes" ]]; then
+    set -v
+fi
+
+if [[ "$debug" = "yes" ]]; then
+    set -x
+fi
+

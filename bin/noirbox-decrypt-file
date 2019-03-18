@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Decrypts a single file into the filesystem.
+# Usage: noirbox-decrypt-file filenme
+
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. "$script_dir/_noirbox-common"
+
+up_to_noirbox_root
+read_config
+
+local_key="$(gcloud kms decrypt \
+    --location="$location" \
+    --keyring="$keyring" \
+    --key="$key" \
+    --plaintext-file=- \
+    --ciphertext-file="$noirbox_dir/local-key.enc")"
+
+file="${1%.gpg}"
+
+decrypt_file "$file" "$local_key"
+

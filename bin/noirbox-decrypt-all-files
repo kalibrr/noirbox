@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Decrypts all files, for pre-deployment use.
+# Usage: noirbox-decrypt-all-files
+# Warning: Be sure to ``noirbox-shred-all-files`` afterwards.
+
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. "$script_dir/_noirbox-common"
+
+up_to_noirbox_root
+read_config
+
+local_key="$(gcloud kms decrypt \
+    --location="$location" \
+    --keyring="$keyring" \
+    --key="$key" \
+    --plaintext-file=- \
+    --ciphertext-file="$noirbox_dir/local-key.enc")"
+
+while IFS="" read -r file
+do
+    decrypt_file "$file" "$local_key"
+done < "$noirbox_dir/noirbox-files.txt"
+

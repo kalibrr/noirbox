@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Edits a file in your $EDITOR.
+# Usage: noirbox-edit filename
+
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. "$script_dir/_noirbox-common"
+
+up_to_noirbox_root
+read_config
+file="${1%.gpg}"
+
+"$script_dir/noirbox-edit-start" "${@}"
+"$EDITOR" "$file"
+"$script_dir/noirbox-edit-end" "${@}"

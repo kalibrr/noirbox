@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Call this after ``noirbox-edit-start``ing a file.
+# Usage: noirbox-edit-end filename
+
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+exec "$script_dir/noirbox-encrypt-file" "${@}"
+git add "${1%.gpg}.gpg"

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Shreds all un-encrypted versions of the noirbox files
+# Usage: noirbox-shred-all-files
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. "$script_dir/_noirbox-common"
+
+up_to_noirbox_root
+read_config
+
+while IFS="" read -r file
+do
+    if ! shred -u "$file"; then
+        if ! rm -P "$file"; then
+            rm -f "$file"
+        fi
+    fi
+done < "$noirbox_dir/noirbox-files.txt"

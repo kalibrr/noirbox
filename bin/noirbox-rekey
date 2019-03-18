@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Creates a new key, and re-encrypts all files with the new local key.
+# Usage: noirbox-rekey
+
+set -e -u -o pipefail
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. "$script_dir/_noirbox-common"
+
+up_to_noirbox_root
+read_config
+
+local_key="$(gcloud kms decrypt \
+    --location="$location" \
+    --keyring="$keyring" \
+    --key="$key" \
+    --plaintext-file=- \
+    --ciphertext-file="$noirbox_dir/local-key.enc")"
+
+new_local_key="$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 64000)"
+
+while IFS="" read -r file
+do
+    echo "rekeying $file..."
+    decrypt_file "$file" "$local_key"
+    encrypt_file "$file" "$new_local_key"
+done < "$noirbox_dir/noirbox-files.txt"
+
+echo "$new_local_key" | gcloud kms encrypt \
+    --location="$location" \
+    --keyring="$keyring" \
+    --key="$key" \
+    --plaintext-file=- \
+    --ciphertext-file="$noirbox_dir/local-key.enc"
