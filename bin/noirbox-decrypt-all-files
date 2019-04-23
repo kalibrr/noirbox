@@ -28,7 +28,7 @@ done
 
 while IFS="" read -r file
 do
-    if [[ -n "$dir" ]];
+    if [[ -n "$dir" ]]; then
         if echo "$file" | grep "$dir"; then
             decrypt_file "$file" "$local_key"
         fi

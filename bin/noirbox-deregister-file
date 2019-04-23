@@ -7,10 +7,12 @@ set -e -u -o pipefail
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . "$script_dir/_noirbox-common"
 
+old_file="$(realpath ${1%.gpg})"
+
 up_to_noirbox_root
 read_config
 
-old_file="${1%.gpg}"
+old_file="$(realpath --relative-to=. "$old_file")"
 
 found=no
 while IFS="" read -r file

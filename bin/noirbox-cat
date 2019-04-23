@@ -7,11 +7,13 @@ set -e -u -o pipefail
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . "$script_dir/_noirbox-common"
 
+file="$(realpath ${1%.gpg})"
+
 up_to_noirbox_root
 read_config
 get_local_key
 
-file="${1%.gpg}"
+file="$(realpath --relative-to=. "$file")"
 
 cat_file "$file" "$local_key"
 
