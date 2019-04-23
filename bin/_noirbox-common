@@ -18,6 +18,7 @@ read_config() {
     location="$(cat "$noirbox_dir/config.yaml" | yq -r .location)"
     key="$(cat "$noirbox_dir/config.yaml" | yq -r .key)"
     keyring="$(cat "$noirbox_dir/config.yaml" | yq -r .keyring)"
+    project="$(cat "$noirbox_dir/config.yaml" | yq -r .project)"
 }
 
 cat_file() {
@@ -34,6 +35,17 @@ cat_file() {
     fi
 }
 
+get_local_key() {
+    # assumes read_config() has been called
+    local_key="$(gcloud kms decrypt \
+        --location="$location" \
+        --keyring="$keyring" \
+        --key="$key" \
+        --project="$project" \
+        --plaintext-file=- \
+        --ciphertext-file="$noirbox_dir/local-key.enc")"
+}
+
 decrypt_file() {
     file="$1"
     local_key="$2"
@@ -46,8 +58,6 @@ encrypt_file() {
     rm -f "$file.gpg"
     echo "$local_key" | gpg --cipher-algo AES256 --batch -c --passphrase-fd 0 "$file"
 }
-
-
 
 verbose="no"
 debug="no"

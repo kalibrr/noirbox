@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Initializes noirbox in your directory. Expects to be in a git repo.
-# Usage: noirbox-init --location=location --key=key --keyring=keyring
+# Usage: noirbox-init --location=location --key=key --keyring=keyring --project=project
 
 set -e -u -o pipefail
 
@@ -13,6 +13,7 @@ noirbox_dir="$(realpath .noirbox)"
 keyring=""
 location=""
 key=""
+proejct=""
 create_key="yes"
 force=""
 
@@ -29,6 +30,9 @@ for arg in "${@}"; do
     "--key")
         key="$val"
         ;;
+    "--project")
+        project="$val"
+        ;;
     "--create-key")
         create_key="$val"
         ;;
@@ -44,7 +48,7 @@ if [[ -d .noirbox ]] && [[ "$force" != "yes" ]]; then
 fi
 
 
-if [[ -z "$keyring" ]] || [[ -z "$location" ]] || [[ -z "$key" ]]; then
+if [[ -z "$keyring" ]] || [[ -z "$location" ]] || [[ -z "$key" ]] || [[ -z "$project" ]]; then
     echo "Please enter location (e.g. asia), a keyring name, and a key name."
     exit 1
 fi
@@ -53,14 +57,17 @@ cat >"$noirbox_dir/config.yaml" <<EOF
 location: "$location"
 keyring: "$keyring"
 key: "$key"
+project: "$project"
 EOF
 
 if [[ "$create_key" = "yes" ]]; then
     gcloud kms keyrings create "$keyring" \
+        --project "$project" \
         --location "$location"
     gcloud kms keys create "$key" \
         --location "$location" \
         --keyring "$keyring" \
+        --project "$project" \
         --purpose encryption \
         --rotation-period "30d" \
         --next-rotation-time "+30d"
@@ -72,6 +79,7 @@ local_key="$(tr -dc A-Za-z0-9 < /dev/urandom | head -c $key_size)"
 echo "$local_key" | gcloud kms encrypt \
     --location="$location" \
     --keyring="$keyring" \
+    --project="$project" \
     --key="$key" \
     --plaintext-file=- \
     --ciphertext-file="$noirbox_dir/local-key.enc"
