@@ -13,6 +13,6 @@ up_to_noirbox_root
 read_config
 file="$(realpath --relative-to=. "$file")"
 
-"$script_dir/noirbox-edit-start" "${@}"
+"$script_dir/noirbox-edit-start" "$file"
 "$EDITOR" "$file"
-"$script_dir/noirbox-edit-end" "${@}"
+"$script_dir/noirbox-edit-end" "$file"
